@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti'
 import CelebrationPage from './pages/CelebrationPage.jsx'
 import WelcomePage from './pages/WelcomePage.jsx'
 import Song from './components/Song.jsx'
+import { prepareNarrationFromGesture } from './components/narrationPlayback.js'
 
 const confettiColors = ['#E63946', '#FFFFFF', '#FFE5E9', '#FFD166']
 
@@ -26,6 +27,7 @@ function App() {
 
   function handleGiftTap() {
     window.clearTimeout(confettiTimerRef.current)
+    prepareNarrationFromGesture()
     songRef.current?.playUlulation()
     songRef.current?.start()
 

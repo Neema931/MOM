@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { resumeAudioContext, setMediaVolume } from './audioPlayback.js'
-
-const narrationAssets = import.meta.glob('../assets/audio/background.mp3.mp3', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-})
-const narrationUrl = narrationAssets['../assets/audio/background.mp3.mp3']
+import {
+  getNarrationAudio,
+  hasNarrationAudio,
+  playNarrationAudio,
+} from './narrationPlayback.js'
 
 function Typewriter({ paragraphs, onSpeaking, onComplete }) {
   const [progress, setProgress] = useState({
@@ -15,6 +12,7 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
     complete: paragraphs.length === 0,
   })
   const [audioError, setAudioError] = useState('')
+  const [needsPlayTap, setNeedsPlayTap] = useState(false)
   const cursorRef = useRef(null)
   const audioRef = useRef(null)
   const syncIntervalRef = useRef(null)
@@ -26,13 +24,13 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
   }, [onSpeaking, onComplete])
 
   useEffect(() => {
-    if (!narrationUrl) {
+    const audio = getNarrationAudio()
+    if (!audio) {
       console.error('Narration audio is missing: background.mp3.mp3')
       callbacksRef.current.onSpeaking?.(false)
       return undefined
     }
 
-    const audio = new Audio(narrationUrl)
     audioRef.current = audio
     completedRef.current = false
     let resumeAfterVisibility = false
@@ -97,11 +95,10 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       }
 
       resumeAfterVisibility = false
-      resumeAudioContext()
-      audio.play().catch((error) => {
+      playNarrationAudio().catch((error) => {
         if (error.name !== 'AbortError') {
           console.error('Unable to resume the narration audio.', error)
-          setAudioError('Narration audio could not resume. Tap Skip to continue.')
+          setNeedsPlayTap(true)
         }
       })
     }
@@ -116,7 +113,8 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
 
     syncIntervalRef.current = window.setInterval(syncTextToAudio, 40)
     audio.preload = 'auto'
-    setMediaVolume(audio, 1)
+    audio.volume = 1
+    audio.muted = false
     audio.addEventListener('playing', () => {
       callbacksRef.current.onSpeaking?.(true)
       setAudioError('')
@@ -135,13 +133,10 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       callbacksRef.current.onSpeaking?.(false)
     })
 
-    resumeAudioContext()
-    audio.play().catch((error) => {
+    playNarrationAudio().catch((error) => {
       if (error.name === 'AbortError') return
       console.error('Unable to start the narration audio.', error)
-      setAudioError(
-        'Narration audio could not be played. Tap Skip to read the message without audio.',
-      )
+      setNeedsPlayTap(true)
       callbacksRef.current.onSpeaking?.(false)
     })
 
@@ -151,8 +146,6 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       window.removeEventListener('pagehide', pauseWhenPageHidden)
       window.removeEventListener('pageshow', resumeWhenPageVisible)
       audio.pause()
-      audio.removeAttribute('src')
-      audio.load()
       audioRef.current = null
     }
   }, [paragraphs])
@@ -184,12 +177,25 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
     callbacksRef.current.onComplete?.()
   }
 
+  function playNarration() {
+    const audio = audioRef.current
+    if (!audio) return
+
+    setNeedsPlayTap(false)
+    playNarrationAudio().catch((error) => {
+      if (error.name !== 'AbortError') {
+        console.error('Unable to start narration after user tap.', error)
+        setAudioError('Narration audio is unavailable. You can still read the message.')
+      }
+    })
+  }
+
   const visibleParagraphCount = progress.complete
     ? paragraphs.length
     : Math.min(progress.paragraphIndex + 1, paragraphs.length)
   const displayedAudioError =
     audioError ||
-    (!narrationUrl ? 'Narration audio is missing: background.mp3.mp3' : '')
+    (!hasNarrationAudio() ? 'Narration audio is missing: background.mp3.mp3' : '')
 
   return (
     <div className="typewriter-content">
@@ -222,6 +228,15 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       </div>
       {displayedAudioError && (
         <p className="typewriter-audio-error">{displayedAudioError}</p>
+      )}
+      {needsPlayTap && !progress.complete && (
+        <button
+          className="speech-button"
+          onClick={playNarration}
+          type="button"
+        >
+          Tap to play voice
+        </button>
       )}
       {!progress.complete && (
         <button
