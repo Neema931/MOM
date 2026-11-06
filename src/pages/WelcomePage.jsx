@@ -8,7 +8,7 @@ function WelcomePage({ onTap, onOpen }) {
       <section className="welcome-content" aria-labelledby="welcome-title">
         <h1 className="welcome-message" id="welcome-title" font size = "10px">
           Hello Veronica!! 💖 I heard a rumor that today is someone&apos;s special
-          day. Tap this box to see the rumours
+          day. Tap this box to hear the rumors
         </h1>
         <svg
           className="welcome-arrow"
