@@ -1,4 +1,4 @@
-# Mother's Day
+# Mom's Birthday
 
 A small React + Vite greeting with a welcome screen and a celebratory message.
 Open the gift on the welcome screen to reveal the celebration and confetti.
