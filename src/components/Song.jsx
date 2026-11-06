@@ -17,7 +17,7 @@ const ululationUrl =
   audioAssets['../assets/audio/ululation.mp3.mp3']
 const musicUrl =
   audioAssets['../assets/audio/happy-birthday-instrumental.mp3'] ?? ululationUrl
-const musicVolume = 0.2
+const musicVolume = 0.1
 const musicLoopEnd = 30
 const reportedMissingAssets = new Set()
 
