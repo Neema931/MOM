@@ -34,6 +34,7 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
     const audio = new Audio(narrationUrl)
     audioRef.current = audio
     completedRef.current = false
+    let resumeAfterVisibility = false
 
     function finish() {
       if (completedRef.current) return
@@ -77,6 +78,39 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       })
     }
 
+    function pauseWhenPageHidden() {
+      resumeAfterVisibility = !audio.paused && !completedRef.current
+      if (resumeAfterVisibility) {
+        audio.pause()
+      }
+    }
+
+    function resumeWhenPageVisible() {
+      if (
+        document.visibilityState !== 'visible' ||
+        !resumeAfterVisibility ||
+        completedRef.current
+      ) {
+        return
+      }
+
+      resumeAfterVisibility = false
+      audio.play().catch((error) => {
+        if (error.name !== 'AbortError') {
+          console.error('Unable to resume the narration audio.', error)
+          setAudioError('Narration audio could not resume. Tap Skip to continue.')
+        }
+      })
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        pauseWhenPageHidden()
+      } else {
+        resumeWhenPageVisible()
+      }
+    }
+
     syncIntervalRef.current = window.setInterval(syncTextToAudio, 40)
     audio.preload = 'auto'
     audio.volume = 1
@@ -88,6 +122,9 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       callbacksRef.current.onSpeaking?.(false)
     })
     audio.addEventListener('ended', finish)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', pauseWhenPageHidden)
+    window.addEventListener('pageshow', resumeWhenPageVisible)
     audio.addEventListener('error', () => {
       const error = 'Unable to play the narration audio.'
       console.error(error)
@@ -106,6 +143,9 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
 
     return () => {
       window.clearInterval(syncIntervalRef.current)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', pauseWhenPageHidden)
+      window.removeEventListener('pageshow', resumeWhenPageVisible)
       audio.pause()
       audio.removeAttribute('src')
       audio.load()

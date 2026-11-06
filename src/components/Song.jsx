@@ -17,7 +17,7 @@ const ululationUrl =
   audioAssets['../assets/audio/ululation.mp3.mp3']
 const musicUrl =
   audioAssets['../assets/audio/happy-birthday-instrumental.mp3'] ?? ululationUrl
-const musicVolume = 0.3
+const musicVolume = 0.2
 const musicLoopEnd = 30
 const reportedMissingAssets = new Set()
 
@@ -38,6 +38,7 @@ const Song = forwardRef(function Song(_props, ref) {
   const ululationRef = useRef(null)
   const mutedRef = useRef(false)
   const startedRef = useRef(false)
+  const wasPlayingBeforeHideRef = useRef(false)
 
   const playMusic = useCallback((audio) => {
     if (!audio) return
@@ -147,11 +148,42 @@ const Song = forwardRef(function Song(_props, ref) {
       }
       music.addEventListener('timeupdate', loopFirstThirtySeconds)
       music.addEventListener('ended', restartIfNeeded)
-      music.addEventListener('pause', restartIfNeeded)
+      const pauseWhenPageHidden = () => {
+        if (!startedRef.current || !music) return
+
+        wasPlayingBeforeHideRef.current =
+          !music.paused && !mutedRef.current
+        if (!music.paused) {
+          music.pause()
+        }
+      }
+      const resumeWhenPageVisible = () => {
+        if (
+          document.visibilityState === 'visible' &&
+          wasPlayingBeforeHideRef.current &&
+          startedRef.current &&
+          !mutedRef.current
+        ) {
+          wasPlayingBeforeHideRef.current = false
+          playMusic(music)
+        }
+      }
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          pauseWhenPageHidden()
+        } else {
+          resumeWhenPageVisible()
+        }
+      }
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('pagehide', pauseWhenPageHidden)
+      window.addEventListener('pageshow', resumeWhenPageVisible)
       cleanupHandlers.push(() => {
         music.removeEventListener('timeupdate', loopFirstThirtySeconds)
         music.removeEventListener('ended', restartIfNeeded)
-        music.removeEventListener('pause', restartIfNeeded)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('pagehide', pauseWhenPageHidden)
+        window.removeEventListener('pageshow', resumeWhenPageVisible)
       })
       music.load()
 
