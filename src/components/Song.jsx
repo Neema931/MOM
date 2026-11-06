@@ -12,11 +12,13 @@ const audioAssets = import.meta.glob('../assets/audio/*.mp3', {
   import: 'default',
   query: '?url',
 })
-const musicUrl = audioAssets['../assets/audio/happy-birthday-instrumental.mp3']
 const ululationUrl =
   audioAssets['../assets/audio/ululation.mp3'] ??
   audioAssets['../assets/audio/ululation.mp3.mp3']
-const musicVolume = 0.5
+const musicUrl =
+  audioAssets['../assets/audio/happy-birthday-instrumental.mp3'] ?? ululationUrl
+const musicVolume = 0.3
+const musicLoopEnd = 30
 const reportedMissingAssets = new Set()
 
 function reportMissingAsset(name, path) {
@@ -36,22 +38,11 @@ const Song = forwardRef(function Song(_props, ref) {
   const ululationRef = useRef(null)
   const mutedRef = useRef(false)
   const startedRef = useRef(false)
-  const activeRef = useRef(false)
-  const finishingRef = useRef(false)
-  const expectedPauseRef = useRef(false)
-  const fadeTimerRef = useRef(null)
-
-  const clearFade = useCallback(() => {
-    window.clearInterval(fadeTimerRef.current)
-    fadeTimerRef.current = null
-  }, [])
 
   const playMusic = useCallback((audio) => {
-    if (!audio || mutedRef.current) {
-      return
-    }
+    if (!audio) return
 
-    audio.muted = false
+    audio.muted = mutedRef.current
     audio.play().catch((error) => {
       if (error.name !== 'AbortError') {
         console.error('Unable to play the birthday instrumental.', error)
@@ -74,19 +65,24 @@ const Song = forwardRef(function Song(_props, ref) {
       return
     }
 
-    clearFade()
+    const isFirstStart = !startedRef.current
     startedRef.current = true
-    activeRef.current = true
-    finishingRef.current = false
-    audio.loop = true
+    audio.loop = false
+    if (isFirstStart) {
+      audio.currentTime = 0
+    }
     audio.volume = musicVolume
     audio.muted = mutedRef.current
     playMusic(audio)
-  }, [clearFade, playMusic])
+  }, [playMusic])
 
   const playUlulation = useCallback(() => {
     if (!ululationUrl) {
       reportMissingAsset('ululation', 'src/assets/audio/ululation.mp3')
+      return
+    }
+
+    if (ululationUrl === musicUrl) {
       return
     }
 
@@ -104,63 +100,10 @@ const Song = forwardRef(function Song(_props, ref) {
     })
   }, [])
 
-  const setActive = useCallback(
-    (isActive) => {
-      activeRef.current = isActive
-      if (isActive && startedRef.current && !finishingRef.current) {
-        playMusic(musicRef.current)
-      }
-    },
-    [playMusic],
-  )
-
-  const fadeOut = useCallback(() => {
-    const audio = musicRef.current
-    activeRef.current = false
-    if (!audio || mutedRef.current || audio.paused) {
-      finishingRef.current = true
-      return
-    }
-
-    clearFade()
-    finishingRef.current = true
-    const startingVolume = audio.volume
-    const fadeDuration = 3000
-    const fadeStartedAt = Date.now()
-
-    fadeTimerRef.current = window.setInterval(() => {
-      const progress = Math.min((Date.now() - fadeStartedAt) / fadeDuration, 1)
-      audio.volume = startingVolume * (1 - progress)
-
-      if (progress === 1) {
-        clearFade()
-        expectedPauseRef.current = true
-        audio.pause()
-        audio.currentTime = 0
-        audio.volume = musicVolume
-      }
-    }, 60)
-  }, [clearFade])
-
-  const cancelFade = useCallback(() => {
-    clearFade()
-    finishingRef.current = false
-    activeRef.current = false
-    if (!startedRef.current || mutedRef.current) {
-      return
-    }
-
-    const audio = musicRef.current
-    if (audio) {
-      audio.volume = musicVolume
-      playMusic(audio)
-    }
-  }, [clearFade, playMusic])
-
   useImperativeHandle(
     ref,
-    () => ({ start, playUlulation, setActive, fadeOut, cancelFade }),
-    [cancelFade, fadeOut, playUlulation, setActive, start],
+    () => ({ start, playUlulation }),
+    [playUlulation, start],
   )
 
   useEffect(() => {
@@ -177,7 +120,7 @@ const Song = forwardRef(function Song(_props, ref) {
       )
     } else {
       music.preload = 'auto'
-      music.loop = true
+      music.loop = false
       music.volume = musicVolume
       const markReady = () => setAudioStatus('ready')
       const markError = () => {
@@ -192,26 +135,21 @@ const Song = forwardRef(function Song(_props, ref) {
       })
 
       const restartIfNeeded = () => {
-        if (expectedPauseRef.current) {
-          expectedPauseRef.current = false
-          return
-        }
-
-        if (
-          !startedRef.current ||
-          !activeRef.current ||
-          mutedRef.current ||
-          finishingRef.current
-        ) {
-          return
-        }
+        if (!startedRef.current) return
 
         music.currentTime = 0
         playMusic(music)
       }
+      const loopFirstThirtySeconds = () => {
+        if (startedRef.current && music.currentTime >= musicLoopEnd) {
+          music.currentTime = 0
+        }
+      }
+      music.addEventListener('timeupdate', loopFirstThirtySeconds)
       music.addEventListener('ended', restartIfNeeded)
       music.addEventListener('pause', restartIfNeeded)
       cleanupHandlers.push(() => {
+        music.removeEventListener('timeupdate', loopFirstThirtySeconds)
         music.removeEventListener('ended', restartIfNeeded)
         music.removeEventListener('pause', restartIfNeeded)
       })
@@ -230,21 +168,20 @@ const Song = forwardRef(function Song(_props, ref) {
     }
 
     return () => {
-      clearFade()
       cleanupHandlers.forEach((cleanup) => cleanup())
       music?.pause()
       ululation?.pause()
       musicRef.current = null
       ululationRef.current = null
     }
-  }, [clearFade, playMusic])
+  }, [playMusic])
 
   useEffect(() => {
     mutedRef.current = isMuted
     const music = musicRef.current
     if (music) {
       music.muted = isMuted
-      if (!isMuted && startedRef.current && activeRef.current) {
+      if (!isMuted && startedRef.current) {
         playMusic(music)
       }
     }

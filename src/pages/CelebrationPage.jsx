@@ -8,12 +8,12 @@ const message = [
   'Happy 55th Birthday to the most precious woman in my life.',
   "I honestly don't think words will ever be enough to express how much you mean to me. As I grow older, I realise more and more just how blessed I am to have you as my mother. Behind the person I am today are countless sacrifices, silent prayers, sleepless nights and unconditional love that I may never fully understand.",
   "Thank you for everything, Mum. Thank you for being strong even on the days you were tired, and for giving so much of yourself to make my life better. I hope you know that none of it goes unnoticed.",
-  'As you celebrate 55 years, my prayer is that the Almighty God continues to order your steps, cover you under His grace and surround you with His unfailing love. May He bless you with divine health, strength, peace and many more fruitful years. May every silent prayer you have whispered find an answer, every tear you have shed be replaced with joy, and every sacrifice you have made return to you as blessings beyond measure. May you never lack, may His favour follow you wherever you go, and may you live to witness generations of blessings. May this new chapter be filled with testimonies that only God can take the glory for.',
+  'As you celebrate 55 years today, my prayer is that the Almighty God continues to order your steps, cover you under His grace and surround you with His unfailing love. May He bless you with divine health, strength, peace and many more fruitful years. May every silent prayer you have whispered find an answer, every tear you have shed be replaced with joy, and every sacrifice you have made return to you as blessings beyond measure. May you never lack, may His favour follow you wherever you go, and may you live to witness generations of blessings. May this new chapter be filled with testimonies that only God can take the glory for.',
   'I hope I make you proud, Mum. I hope one day I can give you even a fraction of the love, comfort and happiness you have given me. No matter how old I get or where life takes me.',
   "Happy 55th Birthday, Mum. May God's goodness and mercy follow you all the days of your life. I love you more than words could ever explain. ❤️",
 ]
 
-function CelebrationPage({ onReadingChange, onReplay, onComplete }) {
+function CelebrationPage({ onReplay }) {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [messageFinished, setMessageFinished] = useState(false)
   const finaleConfettiFiredRef = useRef(false)
@@ -24,10 +24,6 @@ function CelebrationPage({ onReadingChange, onReplay, onComplete }) {
     },
     [],
   )
-
-  useEffect(() => {
-    onReadingChange(!messageFinished)
-  }, [messageFinished, onReadingChange])
 
   useEffect(() => {
     if (!messageFinished || finaleConfettiFiredRef.current) {
@@ -43,8 +39,7 @@ function CelebrationPage({ onReadingChange, onReplay, onComplete }) {
       colors: ['#E63946', '#FFFFFF', '#FFE5E9', '#FFD166'],
       disableForReducedMotion: true,
     })
-    onComplete()
-  }, [messageFinished, onComplete])
+  }, [messageFinished])
 
   function celebrateAgain() {
     confetti({

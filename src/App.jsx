@@ -76,16 +76,7 @@ function App() {
     }, 420)
   }, [])
 
-  const handleReadingChange = useCallback((isActive) => {
-    songRef.current?.setActive(isActive)
-  }, [])
-
-  const handleMessageComplete = useCallback(() => {
-    songRef.current?.fadeOut()
-  }, [])
-
   const handleReplay = useCallback(() => {
-    songRef.current?.cancelFade()
     transitionTo('welcome')
   }, [transitionTo])
 
@@ -97,9 +88,7 @@ function App() {
           className={`app-stage${isTransitioning ? ' app-stage--leaving' : ''}${isEntering ? ' app-stage--entering' : ''}`}
         >
           <CelebrationPage
-            onReadingChange={handleReadingChange}
             onReplay={handleReplay}
-            onComplete={handleMessageComplete}
           />
         </div>
       ) : (

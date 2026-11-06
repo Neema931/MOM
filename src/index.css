@@ -322,6 +322,13 @@ button:focus-visible {
   margin-left: auto;
 }
 
+.typewriter-audio-error {
+  margin: 12px 0 0;
+  color: var(--deep-red);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
 .cartoon-wrap {
   display: grid;
   width: min(100%, 360px);
