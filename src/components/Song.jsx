@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { resumeAudioContext, setMediaVolume } from './audioPlayback.js'
 
 const audioAssets = import.meta.glob('../assets/audio/*.mp3', {
   eager: true,
@@ -43,6 +44,8 @@ const Song = forwardRef(function Song(_props, ref) {
   const playMusic = useCallback((audio) => {
     if (!audio) return
 
+    resumeAudioContext()
+    setMediaVolume(audio, musicVolume)
     audio.muted = mutedRef.current
     audio.play().catch((error) => {
       if (error.name !== 'AbortError') {
@@ -72,7 +75,7 @@ const Song = forwardRef(function Song(_props, ref) {
     if (isFirstStart) {
       audio.currentTime = 0
     }
-    audio.volume = musicVolume
+    setMediaVolume(audio, musicVolume)
     audio.muted = mutedRef.current
     playMusic(audio)
   }, [playMusic])
@@ -122,7 +125,7 @@ const Song = forwardRef(function Song(_props, ref) {
     } else {
       music.preload = 'auto'
       music.loop = false
-      music.volume = musicVolume
+      music.volume = 1
       const markReady = () => setAudioStatus('ready')
       const markError = () => {
         setAudioStatus('error')
@@ -152,7 +155,7 @@ const Song = forwardRef(function Song(_props, ref) {
         if (!startedRef.current || !music) return
 
         wasPlayingBeforeHideRef.current =
-          !music.paused && !mutedRef.current
+          wasPlayingBeforeHideRef.current || (!music.paused && !mutedRef.current)
         if (!music.paused) {
           music.pause()
         }

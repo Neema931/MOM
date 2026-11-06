@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { resumeAudioContext, setMediaVolume } from './audioPlayback.js'
 
 const narrationAssets = import.meta.glob('../assets/audio/background.mp3.mp3', {
   eager: true,
@@ -79,7 +80,8 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
     }
 
     function pauseWhenPageHidden() {
-      resumeAfterVisibility = !audio.paused && !completedRef.current
+      resumeAfterVisibility =
+        resumeAfterVisibility || (!audio.paused && !completedRef.current)
       if (resumeAfterVisibility) {
         audio.pause()
       }
@@ -95,6 +97,7 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       }
 
       resumeAfterVisibility = false
+      resumeAudioContext()
       audio.play().catch((error) => {
         if (error.name !== 'AbortError') {
           console.error('Unable to resume the narration audio.', error)
@@ -113,7 +116,7 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
 
     syncIntervalRef.current = window.setInterval(syncTextToAudio, 40)
     audio.preload = 'auto'
-    audio.volume = 1
+    setMediaVolume(audio, 1)
     audio.addEventListener('playing', () => {
       callbacksRef.current.onSpeaking?.(true)
       setAudioError('')
@@ -132,6 +135,7 @@ function Typewriter({ paragraphs, onSpeaking, onComplete }) {
       callbacksRef.current.onSpeaking?.(false)
     })
 
+    resumeAudioContext()
     audio.play().catch((error) => {
       if (error.name === 'AbortError') return
       console.error('Unable to start the narration audio.', error)
